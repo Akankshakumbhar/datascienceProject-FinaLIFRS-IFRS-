@@ -385,24 +385,35 @@ print(stage3ecl);'''
 
 
 IFRS_Stage_1_ECL=(join_coll_auth['EAD']*join_coll_auth['PD12'])*join_coll_auth['LGD']
-print(IFRS_Stage_1_ECL)
+
+Stage_1=IFRS_Stage_1_ECL.to_frame(name="Stage_1")
+print(Stage_1)
 
 IFRS_Stage_2_ECL=(join_coll_auth['EAD']*join_coll_auth['PDLT'])*join_coll_auth['LGD']
-print(IFRS_Stage_2_ECL)
+Stage_2=IFRS_Stage_2_ECL.to_frame(name="Stage_2")
+print(Stage_2)
 
 IFRS_Stage_3_ECL=join_coll_auth['EAD']*join_coll_auth['LGD']
-print(IFRS_Stage_3_ECL)
+Stage_3=IFRS_Stage_3_ECL.to_frame(name="Stage_3")
+print(Stage_3)
+
+
+import duckdb
+cols=duckdb.query("select PD12,PDLT,EAD,LGD from join_coll_auth ").df()
+print(cols)
+
+# stag1,stage2,stage3,pd12,pdlt,ead,lgd(store in one data frame)
 
 
 
-merge_df=pd.concat([IFRS_Stage_1_ECL,IFRS_Stage_2_ECL,IFRS_Stage_3_ECL],axis=1)
 
-merge_df=merge_df.reset_index(drop=True)
-print(merge_df)
+merge_ECL=merged_ECL=pd.concat([Stage_1,Stage_2,Stage_3,cols], axis=1)
+merged_ECL=merged_ECL.reset_index(drop=True)
+print(merged_ECL)
+final_stage=pd.DataFrame(merge_ECL)
+output_excel_path=r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\Output_data.csv"
 
-
-
-
+final_stage.to_csv(output_excel_path,index=False)
 
 
 
