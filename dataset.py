@@ -131,38 +131,73 @@ join_coll_config=pd.merge(model_config,model_collateral,on='id')
 join_coll_auth=pd.merge(model_collateral,model_authorrep,on='id')
 #print(join_coll_auth);
 
+#stage1 Ecl
+import duckdb
+stage1ecl=duckdb.query("Select  EAD*PD12*LGD as Stage1 from join_coll_auth ").df()
+#print(stage1ecl)
+
+#stage2
+stage2ecl=duckdb.query("select EAD*PDLT*LGD  as Stage2 from  join_coll_auth").df()
+#print(stage2ecl)
+# stage 3
+stage3ecl=duckdb.query("select EAD*LGD  as Stage3 from join_coll_auth").df()
+#print(stage3ecl)
+
+
 
 
 
 
 # step 3#
-# stage 1,stage2,stage3
+# stage 1,stage2,stage3,PD12,PDLT,EAD,LGD(conact in one datframe as final 1)
 
 
 import duckdb
-cols=duckdb.query("select PD12,PDLT,EAD,LGD ,(EAD*PD12) as Stage1 ,(EAD*PDLT)as stag2 ,(EAD*LGD) as stage3 from join_coll_auth ").df()
-print(cols)
+cols=duckdb.query("select PD12,PDLT,EAD,LGD from join_coll_auth ").df()
 
 
 
-#part1(writing in csv)
+final1=fnal1=pd.concat([stage1ecl,stage2ecl,stage3ecl,cols], axis=1)
+final1=final1.reset_index(drop=True)
+print(final1)
 
 
-final_stage=pd.DataFrame(cols)
+
+
+# finalpart1(writing in csv)
+
+
+final_stage=pd.DataFrame(final1)
 output_excel_path=r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\Output_data.csv"
 
 final_stage.to_csv(output_excel_path,index=False)
 
 
 
-#Part2(writing in csv)
-data2 = duckdb.query('SELECT "Reporting Date",EAD,"Previous EAD",(EAD-"Previous EAD") as Change_EAD,(Change_EAD/"Previous EAD")*100 as Percentage FROM join_coll_auth ').df()
-print(data2)
+
+change_EAD=duckdb.query('select EAD-"Previous EAD" as Change_EAD from join_coll_auth  ').df()
+#print(change_EAD)
+
+percentage=duckdb.query('select ((EAD-"Previous EAD")/"Previous EAD")*100  as Percentage from join_coll_auth  ').df()
+#print(percentage)
+
+data2 = duckdb.query('SELECT "Reporting Date",EAD,"Previous EAD" from join_coll_auth  ').df()
+#print(data2)
+
+d1=pd.concat([data2,percentage,change_EAD],axis=1)
+d1=d1.reset_index(drop=True)
+print(d1)
 
 
 
 
-final_stage1=pd.DataFrame(data2)
+
+
+
+
+
+
+final_stage1=pd.DataFrame(d1)
 output_excel_path=r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\A.csv"
 
 final_stage1.to_csv(output_excel_path,index=False)
