@@ -1,6 +1,9 @@
 import pandas as pd
 from typing import Optional, List, Tuple, Dict, Union
 
+from sklearn import linear_model
+
+
 def validate_dataframe(df: pd.DataFrame,
                        n_cols: Optional[int] = None,
                        n_rows: Optional[Tuple[int, int]] = None,
@@ -125,11 +128,14 @@ for df in dfs:
 # Concatenate all dataframes into a single dataframe
 model_authorrep= pd.concat(dfs, ignore_index=True)
 
+#good_dataframe=pd.join([model_authorrep, model_config,model_collateral])
+
 join_coll_config=pd.merge(model_config,model_collateral,on='id')
 #print(join_coll_config);
 
 join_coll_auth=pd.merge(model_collateral,model_authorrep,on='id')
 #print(join_coll_auth);
+#ead computation reports
 
 #stage1 Ecl
 import duckdb
@@ -142,38 +148,23 @@ stage2ecl=duckdb.query("select EAD*PDLT*LGD  as Stage2 from  join_coll_auth").df
 # stage 3
 stage3ecl=duckdb.query("select EAD*LGD  as Stage3 from join_coll_auth").df()
 #print(stage3ecl)
-
-
-
-
-
-
 # step 3#
 # stage 1,stage2,stage3,PD12,PDLT,EAD,LGD(conact in one datframe as final 1)
-
 
 import duckdb
 cols=duckdb.query("select PD12,PDLT,EAD,LGD from join_coll_auth ").df()
 
-
-
-final1=fnal1=pd.concat([stage1ecl,stage2ecl,stage3ecl,cols], axis=1)
-final1=final1.reset_index(drop=True)
-print(final1)
-
-
-
+Ecl_computation=Ecl_computation=pd.concat([stage1ecl,stage2ecl,stage3ecl,cols], axis=1)
+Ecl_computation=Ecl_computation.reset_index(drop=True)
+print(Ecl_computation)
 
 # finalpart1(writing in csv)
-
-
-final_stage=pd.DataFrame(final1)
+Ecl_computation_report=pd.DataFrame(Ecl_computation)
 output_excel_path=r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\Output_data.csv"
-
-final_stage.to_csv(output_excel_path,index=False)
-
+Ecl_computation_report.to_csv(output_excel_path,index=False)
 
 
+#step3:ead varition reports
 
 change_EAD=duckdb.query('select EAD-"Previous EAD" as Change_EAD from join_coll_auth  ').df()
 #print(change_EAD)
@@ -184,20 +175,114 @@ percentage=duckdb.query('select ((EAD-"Previous EAD")/"Previous EAD")*100  as Pe
 data2 = duckdb.query('SELECT "Reporting Date",EAD,"Previous EAD" from join_coll_auth  ').df()
 #print(data2)
 
-d1=pd.concat([data2,percentage,change_EAD],axis=1)
-d1=d1.reset_index(drop=True)
-print(d1)
+EAD_report=pd.concat([data2,percentage,change_EAD],axis=1)
+EAD_report=EAD_report.reset_index(drop=True)
+print(EAD_report)
 
-
-
-
-
-
-
-
-
-
-final_stage1=pd.DataFrame(d1)
+EAD_reports=pd.DataFrame(EAD_report)
 output_excel_path=r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\A.csv"
 
-final_stage1.to_csv(output_excel_path,index=False)
+EAD_reports.to_csv(output_excel_path,index=False)
+
+
+
+#step 4 Stage varitions
+stage_varation=duckdb.query('select Stage-"Previous Stage"  as Stagevaration from join_coll_auth ').df()
+#print(stage_varation)
+#Stage_varation=join_coll_auth['Stage']-join_coll_auth['Previous Stage']
+#Stage_varation=Stage_varation.to_frame(name="Stage Variation")
+#print(Stage_varation)
+
+
+stage_varation_percentage=duckdb.query('select ((stage-"Previous Stage")/"Previous Stage")*100  as Stage_varation_Percentage from join_coll_auth').df()
+#print(stage_varation_percentage)
+#per=((join_coll_auth['Stage']-join_coll_auth['Previous Stage'])/join_coll_auth['Previous Stage'])*100
+#per=per.to_frame(name='per')
+#print(per)
+
+
+stage=duckdb.query('select "Reporting Date","Previous Stage",Stage from join_coll_auth ').df()
+#print(stage)
+
+stage1=pd.concat([stage,stage_varation,stage_varation_percentage],axis=1)
+stage1=stage1.reset_index(drop=True)
+print(stage1)
+
+Ecl_computation['Percent_ECL_Stage1'] = (Ecl_computation['Stage1'] / (Ecl_computation['EAD'] * Ecl_computation['LGD'])) * 100
+Ecl_computation['Percent_ECL_Stage2'] = (Ecl_computation['Stage2'] / (Ecl_computation['EAD'] * Ecl_computation['LGD'])) * 100
+Ecl_computation['Percent_ECL_Stage3'] = (Ecl_computation['Stage3'] / (Ecl_computation['EAD'] * Ecl_computation['LGD'])) * 100
+
+# Step 5: Save the computed percentages to a DataFrame and export to Excel
+Percent_ECL_report = Ecl_computation[['Percent_ECL_Stage1', 'Percent_ECL_Stage2', 'Percent_ECL_Stage3']]
+print(Percent_ECL_report)
+
+percentage_of_ECL = 10  # Adjust this percentage as needed
+
+# Calculate the total ECL for all stages
+Ecl_computation['Total_ECL'] = Ecl_computation['Stage1'] + Ecl_computation['Stage2'] + Ecl_computation['Stage3']
+
+# Calculate the loan loss provision based on the specified percentage of the total ECL
+Ecl_computation['Loan_Loss_Provision'] = (percentage_of_ECL / 100) * Ecl_computation['Total_ECL']
+
+# Print or use the computed loan loss provision
+print(Ecl_computation['Loan_Loss_Provision'])
+
+
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+Ecl_computation=pd.read_csv(r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\Output_data.csv")
+Ead_report=pd.read_csv(r"C:\Users\Star\Desktop\Stuffs(IMP)\dataScience expotent files\Project (datascience)\A.csv")
+
+merged_data = pd.merge(Ecl_computation, Ead_report, on='EAD')
+print(merged_data)
+print(merged_data['Reporting Date'])
+merged_data.dropna()
+# Assuming 'Target' is binary (0 or 1), you may need to adjust this based on your data
+# Convert the target variable to binary if necessary
+#merged_data['Reporting Date'] = merged_data['Reporting Date'].astype(int)
+merged_data['Reporting Date'] = pd.to_datetime(merged_data['Reporting Date'])
+# Split the data into features (X) and target variable (y)
+X = merged_data.drop(columns=['EAD', 'Reporting Date', 'Previous EAD', 'Reporting Date'])
+y = merged_data['Reporting Date']
+# Split the data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Apply logistic regression
+logistic_model = LogisticRegression()
+logistic_model.fit(X_test, y_test)
+
+# Predictions
+y_pred = logistic_model.predict(X_train)
+
+# Model evaluation
+accuracy = accuracy_score(y_train, y_pred)
+conf_matrix = confusion_matrix(y_train, y_pred)
+
+print("Accuracy:", accuracy)
+print("Confusion Matrix:\n", conf_matrix)
+
+# Plot scatter plot of actual vs. predicted values
+plt.scatter(y_train, y_pred, alpha=0.5)
+plt.xlabel("Actual")
+plt.ylabel("Predicted")
+plt.title("Actual vs. Predicted")
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
