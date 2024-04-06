@@ -274,15 +274,20 @@ plt.ylabel("Predicted")
 plt.title("Actual vs. Predicted")
 plt.show()
 
+from sklearn.ensemble import RandomForestClassifier
 
+# Apply Random Forest classifier
+rf_model = RandomForestClassifier()
+rf_model.fit(X_train, y_train)
 
+# Predictions
+y_pred_rf = rf_model.predict(X_test)
 
+# Model evaluation
+accuracy_rf = accuracy_score(y_test, y_pred_rf)
+conf_matrix_rf = confusion_matrix(y_test, y_pred_rf)
 
-
-
-
-
-
-
+print("Random Forest Model Accuracy:", accuracy_rf)
+print("Random Forest Confusion Matrix:\n", conf_matrix_rf)
 
 
